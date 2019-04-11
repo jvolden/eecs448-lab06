@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Vue Lab</title>
+    <link rel="stylesheet" 
+          href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" 
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" 
+          crossorigin="anonymous"/>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+        <div class="col-12" id="app">
+          <div class="m-3">
+            Number of stops: <input v-model.number="numStops" type="number">
+          </div>
+          <div class="card m-3" v-for="stop in filteredStops" :key="stop.id">
+            <h5 class="card-header"> {{ stop.name }} </h5>
+            <div class="card-body">
+              <p class="card-text"> {{ stop.description }}  </p>
+            </div>
+            <h5 class="card-footer"> {{ stop.distance }} miles </h5>
+          </div>
+          <div class="card m-3">
+            <h5 class="card-header">Sources</h5>
+            <div class="card-body">
+              <p><a href="https://codepen.io/shshaw/pen/vJNMQY.js">Helped a ton!</a></p>
+              <p><a href="https://www.geodatasource.com/developers/javascript">GeoDataSource Distance Function</a></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" 
+            integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" 
+            crossorigin="anonymous"
+            ></script> 
+    <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+            integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+            crossorigin="anonymous"
+            ></script>
+    <script
+            src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+            integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+            crossorigin="anonymous"
+            ></script>
+    <!-- development version, includes helpful console warnings -->
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script>
+const app = new Vue({
+  el: '#app',
+  data: {
+    message: 'Hello Vue!',
+    stops: [],
+    numStops: 10,
+    longitude: '',
+    latitude: '' 
+  },
+  methods: {
+    distance(lat1, lon1, lat2, lon2, unit) {
+      if ((lat1 == lat2) && (lon1 == lon2)) {
+        return 0;
+      }
+      else {
+        let radlat1 = Math.PI * lat1/180;
+        let radlat2 = Math.PI * lat2/180;
+        let theta = lon1-lon2;
+        let radtheta = Math.PI * theta/180;
+        let dist = Math.sin(radlat1) * Math.sin(radlat2) + Math.cos(radlat1) * Math.cos(radlat2) * Math.cos(radtheta);
+        if (dist > 1) {
+          dist = 1;
+        }
+        dist = Math.acos(dist);
+        dist = dist * 180/Math.PI;
+        dist = dist * 60 * 1.1515;
+        if (unit=="K") { dist = dist * 1.609344 }
+        if (unit=="N") { dist = dist * 0.8684 }
+        return dist;
+      }
+    },
+    stopDistance(stop) {
+      stop.distance = this.distance(this.latitude, this.longitude, stop.lat, stop.lon).toFixed(3);
+    },
+    geolocation() {
+      navigator.geolocation.getCurrentPosition(this.success, this.error);
+    },
+    success(position) {
+      this.longitude = position.coords.longitude;
+      this.latitude = position.coords.latitude;
+    },
+    error(error) {
+      console.log(error);
+    }
+  },
+  beforeMount() {
+    this.geolocation();
+  },
+  mounted() {
+    fetch('https://utils.pauliankline.com/stops.json').
+      then(response => response.json()).
+      then(myStops => {
+        this.stops = myStops;
+        //Calculate the distance
+        this.stops.forEach(stop => { this.stopDistance(stop); });
+        //Sort them by this.distance. Smallest to largest
+        this.stops.sort((first, second) => (first.distance > second.distance) ? 1 : -1);
+      });
+  },
+  watch: {
+    longitude: function() {
+      this.stops.forEach(stop => { this.stopDistance(stop); })
+    },
+    latitude: function() {
+      this.stops.forEach(stop => { this.stopDistance(stop); })
+    }
+  },
+  computed: {
+    filteredStops: function () {
+      return this.stops.slice(1, this.numStops + 1);
+    }
+  }
+})
+    </script>
+  </body>
+</html>
